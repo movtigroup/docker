@@ -1,32 +1,96 @@
-# قالب وب‌سایت MOVTIGROUP
+# Docker Mirror Repository by Movtigroup
 
-این مخزن شامل قالب اصلی وب‌سایت شرکت **MOVTIGROUP** است. هدف از ارائه این مخزن، نمایش و مستندسازی طراحی ظاهری و ساختار صفحات جهت ارائه‌ی هویت بصری شرکت می‌باشد. لازم به ذکر است که کدهای عملکردی و منطق پشت وب‌سایت به صورت خصوصی در مخزن مجزا نگهداری می‌شوند.
+این مخزن شامل اسکریپت‌ها و تنظیمات مورد نیاز برای نصب و استفاده از Docker **بدون نیاز به VPN** و با بهره‌گیری از **mirrorهای داخلی و به‌روز** مدیریت‌شده توسط **ManageIt** است. تمامی پکیج‌های Docker و imageهای آن از طریق سرورهای کش شده و پایدار قابل دانلود هستند.
 
-**لینک گیت هاب:** [https://github.com/movtigroup/movtigroup/](https://github.com/movtigroup/movtigroup/)
+---
 
-## معرفی
+## 🚀 نصب و راه‌اندازی
 
-این قالب به عنوان الگوی اصلی طراحی سایت شرکت MOVTIGROUP ارائه شده است. در اینجا تمرکز بر ایجاد یک تجربه کاربری مدرن، ساده و واکنش‌گرا قرار دارد. تمامی اجزا و ساختارهای بصری نمایانگر هویت برند، در‌باشند.
+### 1. Ubuntu (توصیه شده)
 
-## ویژگی‌های قالب
+اگر از سیستم‌عامل **Ubuntu** استفاده می‌کنید، کافیست دستور زیر را اجرا کنید. این اسکریپت به‌طور خودکار:
+- Docker را از مخزن mirror نصب می‌کند
+- mirror imageها را پیکربندی می‌کند
+- نیازی به هیچ تنظیم اضافه‌ای نیست
 
-- **طراحی ریسپانسیو:** سازگار با تمامی دستگاه‌ها از جمله موبایل، تبلت و دسکتاپ.
-- **سفارشی‌سازی آسان:** امکان تغییر و تطبیق المان‌های طراحی مطابق با هویت بصری شرکت.
-- **سادگی و مستندسازی:** ساختار تمیز و مستند برای مرور و استفاده سریع.
-- **سهولت نگهداری:** به‌روزرسانی‌های منظم و ساختار سازمان‌یافته جهت حفظ انسجام طراحی.
+```bash
+curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/install.sh | sh
+```
 
-## نکات مهم
+### 2. سایر توزیع‌های لینوکس
 
-- این مخزن صرفاً جهت نمایش قالب و اجزای ظاهری وب‌سایت می‌باشد.
-- کدهای مربوط به منطق عملکردی و مدیریت ترافیک، در مخزن خصوصی جداگانه نگهداری می‌شوند.
-- تغییرات، بهبودها و به‌روزرسانی‌های طراحی از طریق این مخزن منتشر خواهند شد.
+اگر از توزیع دیگری غیر از Ubuntu استفاده می‌کنید (مانند Debian، CentOS، Arch و ...):
+1. ابتدا **Docker را به روش رسمی** روی سیستم خود نصب کنید.
+2. سپس دستور زیر را برای اضافه کردن mirror imageهای Docker و دور زدن تحریم‌ها اجرا کنید:
 
-## استفاده از قالب
+```bash
+curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/mirror.sh | sh
+```
 
-برای بررسی اجزای طراحی و ساختار صفحات، می‌توانید فایل‌های موجود در این مخزن را مرور نمایید. در صورت داشتن نظرات یا پیشنهادات جهت بهبود قالب، از طریق بخش **Issues** یا ارتباط مستقیم با تیم ما مشارکت فرمایید.
+این اسکریپت فایل `daemon.json` را با mirrorهای ManageIt پیکربندی کرده و سرویس Docker را مجدداً راه‌اندازی می‌کند.
 
-## ارتباط با ما
+### 3. Docker Desktop (Windows / macOS)
 
-- **ایمیل:** [info@movtigroup.ir](mailto:info@movtigroup.ir)
-- **وب‌سایت:** [movtigroup.ir](https://movtigroup.ir)
-- **گیت هاب:** [https://github.com/movtigroup/movtigroup/](https://github.com/movtigroup/movtigroup/)
+اگر از **Docker Desktop** روی ویندوز یا مک استفاده می‌کنید:
+1. به **Settings** (تنظیمات) بروید.
+2. بخش **Docker Engine** را انتخاب کنید.
+3. متن زیر را در فایل `daemon.json` جای‌گذاری کنید.
+4. روی **Apply & Restart** کلیک کنید.
+
+```json
+{
+  "registry-mirrors": [
+    "https://docker.abrha.net"
+  ]
+}
+```
+
+---
+
+## 🐧 Alpine Mirror
+
+ManageIt همچنین یک **mirror به‌روز برای Alpine Linux** در دسترس قرار داده است. می‌توانید از آن در Dockerfile یا مستقیماً روی سیستم Alpine استفاده کنید.
+
+### نمونه Dockerfile برای نصب Nginx از mirror ManageIt (بر پایه Alpine)
+
+```dockerfile
+FROM alpine
+
+# اضافه کردن mirror ManageIt برای Alpine
+RUN echo https://mirror.arvancloud.ir/alpine/v$(echo $(cat /etc/alpine-release) | awk -F . '{print $1"."$2}')/main > /etc/apk/repositories
+RUN echo https://mirror.arvancloud.ir/alpine/v$(echo $(cat /etc/alpine-release) | awk -F . '{print $1"."$2}')/community >> /etc/apk/repositories
+
+# نصب Nginx (به‌عنوان مثال)
+RUN apk update && apk add nginx
+
+CMD nginx -g "daemon off;"
+```
+
+> **نکته:** نسخه‌ی Alpine به‌طور خودکار از روی فایل `/etc/alpine-release` تشخیص داده می‌شود.
+
+---
+
+## 📡 لیست mirrorهای موجود
+
+| آدرس mirror | کاربرد |
+|-------------|--------|
+| `https://docker.arvancloud.ir` | mirror اصلی Docker Hub (برای کشیدن imageها) |
+| `https://mirror.arvancloud.ir/alpine/...` | mirror پکیج‌های Alpine Linux |
+
+
+## 📚 نیازمندی‌ها
+
+- اتصال اینترنت (بدون نیاز به VPN)
+- دسترسی `sudo` برای نصب و تغییر تنظیمات سیستم
+
+---
+
+## 🤝 مشارکت
+
+اگر پیشنهاد یا بهبودی دارید، خوشحال می‌شویم Pull Request شما را ببینیم. همچنین می‌توانید issue ثبت کنید.
+
+---
+
+## 📜 مجوز
+
+این پروژه تحت مجوز MIT منتشر شده است.
