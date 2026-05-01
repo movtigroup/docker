@@ -1,6 +1,6 @@
-# Docker Mirror Repository by Movtigroup
+# 🐳 Docker Mirror Repository by Movti Group
 
-این مخزن شامل اسکریپت‌ها و تنظیمات مورد نیاز برای نصب و استفاده از Docker **بدون نیاز به VPN** و با بهره‌گیری از **mirrorهای داخلی و به‌روز** مدیریت‌شده توسط **ManageIt** است. تمامی پکیج‌های Docker و imageهای آن از طریق سرورهای کش شده و پایدار قابل دانلود هستند.
+این مخزن شامل اسکریپت‌ها و تنظیمات مورد نیاز برای نصب و استفاده از Docker **بدون نیاز به VPN** و با بهره‌گیری از **mirrorهای داخلی و به‌روز** مدیریت‌شده توسط **Movti Group** است. تمامی پکیج‌های Docker و imageهای آن از طریق سرورهای کش شده و پایدار قابل دانلود هستند.
 
 ---
 
@@ -27,7 +27,7 @@ curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/install.sh |
 curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/mirror.sh | sh
 ```
 
-این اسکریپت فایل `daemon.json` را با mirrorهای ManageIt پیکربندی کرده و سرویس Docker را مجدداً راه‌اندازی می‌کند.
+این اسکریپت فایل `daemon.json` را با mirrorهای Movti Group پیکربندی کرده و سرویس Docker را مجدداً راه‌اندازی می‌کند.
 
 ### 3. Docker Desktop (Windows / macOS)
 
@@ -49,14 +49,14 @@ curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/mirror.sh | 
 
 ## 🐧 Alpine Mirror
 
-ManageIt همچنین یک **mirror به‌روز برای Alpine Linux** در دسترس قرار داده است. می‌توانید از آن در Dockerfile یا مستقیماً روی سیستم Alpine استفاده کنید.
+Movti Group همچنین یک **mirror به‌روز برای Alpine Linux** در دسترس قرار داده است. می‌توانید از آن در Dockerfile یا مستقیماً روی سیستم Alpine استفاده کنید.
 
-### نمونه Dockerfile برای نصب Nginx از mirror ManageIt (بر پایه Alpine)
+### نمونه Dockerfile برای نصب Nginx از mirror Movti Group (بر پایه Alpine)
 
 ```dockerfile
 FROM alpine
 
-# اضافه کردن mirror ManageIt برای Alpine
+# اضافه کردن mirror Movti Group برای Alpine
 RUN echo https://mirror.arvancloud.ir/alpine/v$(echo $(cat /etc/alpine-release) | awk -F . '{print $1"."$2}')/main > /etc/apk/repositories
 RUN echo https://mirror.arvancloud.ir/alpine/v$(echo $(cat /etc/alpine-release) | awk -F . '{print $1"."$2}')/community >> /etc/apk/repositories
 
@@ -74,9 +74,11 @@ CMD nginx -g "daemon off;"
 
 | آدرس mirror | کاربرد |
 |-------------|--------|
-| `https://docker.arvancloud.ir` | mirror اصلی Docker Hub (برای کشیدن imageها) |
+| `https://docker.abrha.net` | mirror اصلی Docker Hub (برای کشیدن imageها) |
+| `https://docker.arvancloud.ir` | mirror پشتیبان Docker Hub |
 | `https://mirror.arvancloud.ir/alpine/...` | mirror پکیج‌های Alpine Linux |
 
+---
 
 ## 📚 نیازمندی‌ها
 
