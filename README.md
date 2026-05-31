@@ -6,44 +6,61 @@
 
 ## 🚀 نصب و راه‌اندازی
 
-### 1. Ubuntu (توصیه شده)
+### 1. نصب خودکار (توصیه شده برای اکثر توزیع‌ها)
 
-اگر از سیستم‌عامل **Ubuntu** استفاده می‌کنید، کافیست دستور زیر را اجرا کنید. این اسکریپت به‌طور خودکار:
-- Docker را از مخزن mirror نصب می‌کند
-- mirror imageها را پیکربندی می‌کند
-- نیازی به هیچ تنظیم اضافه‌ای نیست
+این اسکریپت به‌طور خودکار توزیع لینوکس شما (Ubuntu, Debian, CentOS, Fedora, Arch و ...) را تشخیص داده و Docker را با تنظیمات بهینه و استفاده از میرورهای داخلی نصب می‌کند. همچنین برای دور زدن محدودیت‌های دریافت کلید، از متد **Insecure/No-Key** استفاده می‌کند.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/install.sh | sudo bash
 ```
 
-### 2. سایر توزیع‌های لینوکس
+### 2. تنظیم میرور برای داکر نصب شده
 
-اگر از توزیع دیگری غیر از Ubuntu استفاده می‌کنید (مانند Debian، CentOS، Arch و ...):
-1. ابتدا **Docker را به روش رسمی** روی سیستم خود نصب کنید.
-2. سپس دستور زیر را برای اضافه کردن mirror imageهای Docker و دور زدن تحریم‌ها اجرا کنید:
+اگر قبلاً Docker را نصب کرده‌اید و فقط می‌خواهید میرورهای Movti Group را به آن اضافه کنید تا تحریم‌ها را دور بزنید، از این دستور استفاده کنید:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/mirror.sh | sh
+curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/mirror.sh | sudo bash
 ```
 
-این اسکریپت فایل `daemon.json` را با mirrorهای Movti Group پیکربندی کرده و سرویس Docker را مجدداً راه‌اندازی می‌کند.
+این اسکریپت فایل `daemon.json` را با میرورهای زیر پیکربندی کرده و سرویس Docker را مجدداً راه‌اندازی می‌کند.
 
 ### 3. Docker Desktop (Windows / macOS)
 
 اگر از **Docker Desktop** روی ویندوز یا مک استفاده می‌کنید:
 1. به **Settings** (تنظیمات) بروید.
 2. بخش **Docker Engine** را انتخاب کنید.
-3. متن زیر را در فایل `daemon.json` جای‌گذاری کنید.
+3. متن زیر را در آرایه `registry-mirrors` فایل `daemon.json` جای‌گذاری کنید.
 4. روی **Apply & Restart** کلیک کنید.
 
 ```json
 {
   "registry-mirrors": [
+    "https://docker.ththt.ir",
+    "https://docker.arvancloud.ir",
+    "https://mirror2.chabokan.net",
     "https://docker.abrha.net"
   ]
 }
 ```
+
+---
+
+## 📡 لیست mirrorهای موجود
+
+| آدرس mirror | کاربرد | اولویت |
+|-------------|--------|--------|
+| `https://docker.ththt.ir` | mirror اصلی Docker Hub (جدید) | 1️⃣ |
+| `https://docker.arvancloud.ir` | mirror پشتیبان | 2️⃣ |
+| `https://mirror2.chabokan.net` | mirror پشتیبان و پکیج‌های سیستم‌عامل | 3️⃣ |
+| `https://docker.abrha.net` | mirror پشتیبان | 4️⃣ |
+
+---
+
+## 📚 ویژگی‌ها
+
+- **پشتیبانی از توزیع‌های مختلف:** Ubuntu, Debian, CentOS, RHEL, Fedora, Arch Linux.
+- **نصب بدون کلید (No-Key):** حل مشکل اختلال در دریافت کلیدهای GPG مخازن داکر.
+- **بدون نیاز به تغییر DNS یا VPN:** تمامی مراحل از داخل شبکه ایران قابل انجام است.
 
 ---
 
@@ -65,25 +82,6 @@ RUN apk update && apk add nginx
 
 CMD nginx -g "daemon off;"
 ```
-
-> **نکته:** نسخه‌ی Alpine به‌طور خودکار از روی فایل `/etc/alpine-release` تشخیص داده می‌شود.
-
----
-
-## 📡 لیست mirrorهای موجود
-
-| آدرس mirror | کاربرد |
-|-------------|--------|
-| `https://docker.abrha.net` | mirror اصلی Docker Hub (برای کشیدن imageها) |
-| `https://docker.arvancloud.ir` | mirror پشتیبان Docker Hub |
-| `https://mirror.arvancloud.ir/alpine/...` | mirror پکیج‌های Alpine Linux |
-
----
-
-## 📚 نیازمندی‌ها
-
-- اتصال اینترنت (بدون نیاز به VPN)
-- دسترسی `sudo` برای نصب و تغییر تنظیمات سیستم
 
 ---
 
