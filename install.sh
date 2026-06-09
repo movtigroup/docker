@@ -59,9 +59,9 @@ case $OS in
         apt-get install -y ca-certificates curl gnupg lsb-release
         echo -e "${YELLOW}Removing old versions if any...${PLAIN}"
         for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do apt-get remove -y $pkg >/dev/null 2>&1; done
-        REPO_URL="https://mirror2.chabokan.net/ubuntu/docker"
-        [[ "$OS" == "debian" ]] && REPO_URL="https://mirror2.chabokan.net/debian/docker"
-        [[ "$OS" == "raspbian" ]] && REPO_URL="https://mirror2.chabokan.net/raspbian/docker"
+        REPO_URL="https://repo.abrha.net/ubuntu/docker"
+        [[ "$OS" == "debian" ]] && REPO_URL="https://repo.abrha.net/debian/docker"
+        [[ "$OS" == "raspbian" ]] && REPO_URL="https://repo.abrha.net/raspbian/docker"
         echo -e "${YELLOW}Adding Docker repository (Insecure/No-Key mode)...${PLAIN}"
         echo "deb [arch=$(dpkg --print-architecture) trusted=yes] $REPO_URL $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
         apt-get update
@@ -73,9 +73,9 @@ case $OS in
         yum install -y yum-utils
         echo -e "${YELLOW}Adding Docker repository and disabling GPG check...${PLAIN}"
         if [[ "$OS" == "fedora" ]]; then
-            yum-config-manager --add-repo https://mirror2.chabokan.net/fedora/docker-ce.repo
+            yum-config-manager --add-repo https://repo.abrha.net/fedora/docker-ce.repo
         else
-            yum-config-manager --add-repo https://mirror2.chabokan.net/centos/docker-ce.repo
+            yum-config-manager --add-repo https://repo.abrha.net/centos/docker-ce.repo
         fi
         find /etc/yum.repos.d/ -name "*docker-ce.repo" -exec sed -i 's/gpgcheck=1/gpgcheck=0/g' {} +
         yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
