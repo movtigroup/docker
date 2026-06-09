@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Docker Mirror Configuration Script by Movti Group
+# Updated with broader registry mirror support for international and Chinese nodes.
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -31,7 +32,14 @@ cat > /etc/docker/daemon.json <<JSON
     "$PRIMARY_MIRROR",
     "https://docker.arvancloud.ir",
     "https://mirror2.chabokan.net",
-    "https://docker.abrha.net"
+    "https://docker.abrha.net",
+    "https://docker.1ms.run",
+    "https://docker.m.daocloud.io",
+    "https://dockerproxy.net",
+    "https://docker.1panel.live",
+    "https://mirrors.ustc.edu.cn",
+    "https://hub-mirror.c.163.com",
+    "https://registry.hub.docker.com"
   ]
 }
 JSON

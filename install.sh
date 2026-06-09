@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Docker Installation Script by Movti Group
-# Improved with multi-distro support and fallback repository logic.
+# Improved with multi-distro support, fallback repository logic, and better cleanup.
+# Inspired by SuperManito/LinuxMirrors for reliability.
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -48,7 +49,14 @@ config_registry_mirror() {
     "$PRIMARY_MIRROR",
     "https://docker.arvancloud.ir",
     "https://mirror2.chabokan.net",
-    "https://docker.abrha.net"
+    "https://docker.abrha.net",
+    "https://docker.1ms.run",
+    "https://docker.m.daocloud.io",
+    "https://dockerproxy.net",
+    "https://docker.1panel.live",
+    "https://mirrors.ustc.edu.cn",
+    "https://hub-mirror.c.163.com",
+    "https://registry.hub.docker.com"
   ]
 }
 JSON
@@ -88,8 +96,8 @@ case "$OS" in
             fi
         fi
 
+        # 2. Movti Mirror
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            # 2. Movti Mirror
             echo -e "${YELLOW}Official repo failed. Trying Movti mirror...${PLAIN}"
             REPO_URL="http://movti.runflare.run/ubuntu"
             [ "$OS" = "debian" ] && REPO_URL="http://movti.runflare.run/debian"
@@ -101,8 +109,41 @@ case "$OS" in
             fi
         fi
 
+        # 3. Aliyun Mirror (China Fallback)
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${RED}Repository installation failed. Attempting generic installation...${PLAIN}"
+            echo -e "${YELLOW}Trying Aliyun mirror...${PLAIN}"
+            ALIYUN_BASE="https://mirrors.aliyun.com/docker-ce/linux/ubuntu"
+            [ "$OS" = "debian" ] && ALIYUN_BASE="https://mirrors.aliyun.com/docker-ce/linux/debian"
+
+            if curl -fsSL "$ALIYUN_BASE/gpg" | gpg --dearmor -o /etc/apt/keyrings/docker-aliyun.gpg --yes; then
+                echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker-aliyun.gpg] $ALIYUN_BASE $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+                if apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                    INSTALL_SUCCESS=true
+                fi
+            fi
+        fi
+
+        # 4. Tencent Mirror (China Fallback)
+        if [ "$INSTALL_SUCCESS" = "false" ]; then
+            echo -e "${YELLOW}Trying Tencent mirror...${PLAIN}"
+            TENCENT_BASE="https://mirrors.tencent.com/docker-ce/linux/ubuntu"
+            [ "$OS" = "debian" ] && TENCENT_BASE="https://mirrors.tencent.com/docker-ce/linux/debian"
+
+            if curl -fsSL "$TENCENT_BASE/gpg" | gpg --dearmor -o /etc/apt/keyrings/docker-tencent.gpg --yes; then
+                echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker-tencent.gpg] $TENCENT_BASE $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+                if apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                    INSTALL_SUCCESS=true
+                fi
+            fi
+        fi
+
+        if [ "$INSTALL_SUCCESS" = "false" ]; then
+            echo -e "${RED}Repository installation failed. Cleaning up and attempting generic installation...${PLAIN}"
+            rm -f /etc/apt/sources.list.d/docker.list
+            apt-get update
+            if ! command -v curl >/dev/null 2>&1; then
+                apt-get install -y curl
+            fi
             curl -fsSL https://get.docker.com | sh
         fi
         ;;
@@ -124,8 +165,8 @@ case "$OS" in
             fi
         fi
 
+        # 2. Movti
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            # 2. Movti
             echo -e "${YELLOW}Official repo failed. Trying Movti mirror...${PLAIN}"
             MIRROR_REPO="http://movti.runflare.run/centos/docker-ce.repo"
             [ "$OS" = "fedora" ] && MIRROR_REPO="http://movti.runflare.run/fedora/docker-ce.repo"
@@ -138,8 +179,36 @@ case "$OS" in
             fi
         fi
 
+        # 3. Aliyun
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${RED}Repository installation failed. Attempting generic installation...${PLAIN}"
+            echo -e "${YELLOW}Trying Aliyun mirror...${PLAIN}"
+            ALIYUN_REPO="https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo"
+            [ "$OS" = "fedora" ] && ALIYUN_REPO="https://mirrors.aliyun.com/docker-ce/linux/fedora/docker-ce.repo"
+            if yum-config-manager --add-repo "$ALIYUN_REPO"; then
+                if yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                    INSTALL_SUCCESS=true
+                fi
+            fi
+        fi
+
+        # 4. Tencent
+        if [ "$INSTALL_SUCCESS" = "false" ]; then
+            echo -e "${YELLOW}Trying Tencent mirror...${PLAIN}"
+            TENCENT_REPO="https://mirrors.tencent.com/docker-ce/linux/centos/docker-ce.repo"
+            [ "$OS" = "fedora" ] && TENCENT_REPO="https://mirrors.tencent.com/docker-ce/linux/fedora/docker-ce.repo"
+            if yum-config-manager --add-repo "$TENCENT_REPO"; then
+                if yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                    INSTALL_SUCCESS=true
+                fi
+            fi
+        fi
+
+        if [ "$INSTALL_SUCCESS" = "false" ]; then
+            echo -e "${RED}Repository installation failed. Cleaning up and attempting generic installation...${PLAIN}"
+            rm -f /etc/yum.repos.d/*docker-ce.repo
+            if ! command -v curl >/dev/null 2>&1; then
+                yum install -y curl
+            fi
             curl -fsSL https://get.docker.com | sh
         fi
         unmask_docker
@@ -153,6 +222,11 @@ case "$OS" in
         ;;
     *)
         echo -e "${RED}Unsupported OS: $OS. Attempting generic installation...${PLAIN}"
+        if ! command -v curl >/dev/null 2>&1; then
+            echo -e "${YELLOW}Attempting to install curl...${PLAIN}"
+            # Common package managers
+            apt-get install -y curl >/dev/null 2>&1 || yum install -y curl >/dev/null 2>&1 || pacman -S --noconfirm curl >/dev/null 2>&1 || true
+        fi
         curl -fsSL https://get.docker.com | sh
         ;;
 esac
