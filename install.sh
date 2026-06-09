@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Docker Installation Script by Movti Group
-# Improved with multi-distro support and insecure (no-key) repository support.
+# Improved with multi-distro support, fallback repository logic, and better cleanup.
+# Inspired by SuperManito/LinuxMirrors for reliability.
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -20,7 +21,7 @@ if [ -f /etc/os-release ]; then
     . /etc/os-release
     OS=$ID
     if [ -z "$VERSION_CODENAME" ]; then
-        VERSION_CODENAME=$(echo $VERSION_ID | cut -d. -f1)
+        VERSION_CODENAME=$(echo "$VERSION_ID" | cut -d. -f1)
     fi
 else
     echo -e "${RED}Unsupported system: /etc/os-release not found.${PLAIN}"
@@ -31,6 +32,14 @@ echo -e "${BLUE}Detected OS: $OS ($VERSION_CODENAME)${PLAIN}"
 
 PRIMARY_MIRROR="https://docker.ththt.ir"
 
+unmask_docker() {
+    if command -v systemctl >/dev/null 2>&1; then
+        echo -e "${YELLOW}Unmasking Docker service...${PLAIN}"
+        systemctl unmask docker.service >/dev/null 2>&1 || true
+        systemctl unmask docker.socket >/dev/null 2>&1 || true
+    fi
+}
+
 config_registry_mirror() {
     echo -e "${YELLOW}Configuring Docker registry mirrors...${PLAIN}"
     mkdir -p /etc/docker
@@ -40,10 +49,18 @@ config_registry_mirror() {
     "$PRIMARY_MIRROR",
     "https://docker.arvancloud.ir",
     "https://mirror2.chabokan.net",
-    "https://docker.abrha.net"
+    "https://docker.abrha.net",
+    "https://docker.1ms.run",
+    "https://docker.m.daocloud.io",
+    "https://dockerproxy.net",
+    "https://docker.1panel.live",
+    "https://mirrors.ustc.edu.cn",
+    "https://hub-mirror.c.163.com",
+    "https://registry.hub.docker.com"
   ]
 }
 JSON
+    unmask_docker
     if command -v systemctl >/dev/null 2>&1; then
         systemctl daemon-reload
         systemctl restart docker || true
@@ -52,42 +69,164 @@ JSON
     fi
 }
 
-case $OS in
+case "$OS" in
     ubuntu|debian|raspbian|linuxmint)
         echo -e "${YELLOW}Installing Docker for $OS...${PLAIN}"
         apt-get update
         apt-get install -y ca-certificates curl gnupg lsb-release
         echo -e "${YELLOW}Removing old versions if any...${PLAIN}"
-        for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do apt-get remove -y $pkg >/dev/null 2>&1; done
-        REPO_URL="https://repo.abrha.net/ubuntu/docker"
-        [[ "$OS" == "debian" ]] && REPO_URL="https://repo.abrha.net/debian/docker"
-        [[ "$OS" == "raspbian" ]] && REPO_URL="https://repo.abrha.net/raspbian/docker"
-        echo -e "${YELLOW}Adding Docker repository (Insecure/No-Key mode)...${PLAIN}"
-        echo "deb [arch=$(dpkg --print-architecture) trusted=yes] $REPO_URL $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-        apt-get update
-        apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+        for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
+            apt-get remove -y "$pkg" >/dev/null 2>&1
+        done
+
+        INSTALL_SUCCESS=false
+
+        # 1. Official Docker Repository
+        echo -e "${YELLOW}Trying official Docker repository...${PLAIN}"
+        REPO_BASE="https://download.docker.com/linux/ubuntu"
+        [ "$OS" = "debian" ] && REPO_BASE="https://download.docker.com/linux/debian"
+        [ "$OS" = "raspbian" ] && REPO_BASE="https://download.docker.com/linux/raspbian"
+
+        mkdir -p /etc/apt/keyrings
+        if curl -fsSL "$REPO_BASE/gpg" -o /etc/apt/keyrings/docker.asc; then
+            chmod a+r /etc/apt/keyrings/docker.asc
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] $REPO_BASE $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+            if apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                INSTALL_SUCCESS=true
+            fi
+        fi
+
+        # 2. Movti Mirror
+        if [ "$INSTALL_SUCCESS" = "false" ]; then
+            echo -e "${YELLOW}Official repo failed. Trying Movti mirror...${PLAIN}"
+            REPO_URL="http://movti.runflare.run/ubuntu"
+            [ "$OS" = "debian" ] && REPO_URL="http://movti.runflare.run/debian"
+            [ "$OS" = "raspbian" ] && REPO_URL="http://movti.runflare.run/raspbian"
+
+            echo "deb [arch=$(dpkg --print-architecture) trusted=yes] $REPO_URL $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+            if apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                INSTALL_SUCCESS=true
+            fi
+        fi
+
+        # 3. Aliyun Mirror (China Fallback)
+        if [ "$INSTALL_SUCCESS" = "false" ]; then
+            echo -e "${YELLOW}Trying Aliyun mirror...${PLAIN}"
+            ALIYUN_BASE="https://mirrors.aliyun.com/docker-ce/linux/ubuntu"
+            [ "$OS" = "debian" ] && ALIYUN_BASE="https://mirrors.aliyun.com/docker-ce/linux/debian"
+
+            if curl -fsSL "$ALIYUN_BASE/gpg" | gpg --dearmor -o /etc/apt/keyrings/docker-aliyun.gpg --yes; then
+                echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker-aliyun.gpg] $ALIYUN_BASE $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+                if apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                    INSTALL_SUCCESS=true
+                fi
+            fi
+        fi
+
+        # 4. Tencent Mirror (China Fallback)
+        if [ "$INSTALL_SUCCESS" = "false" ]; then
+            echo -e "${YELLOW}Trying Tencent mirror...${PLAIN}"
+            TENCENT_BASE="https://mirrors.tencent.com/docker-ce/linux/ubuntu"
+            [ "$OS" = "debian" ] && TENCENT_BASE="https://mirrors.tencent.com/docker-ce/linux/debian"
+
+            if curl -fsSL "$TENCENT_BASE/gpg" | gpg --dearmor -o /etc/apt/keyrings/docker-tencent.gpg --yes; then
+                echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker-tencent.gpg] $TENCENT_BASE $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+                if apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                    INSTALL_SUCCESS=true
+                fi
+            fi
+        fi
+
+        if [ "$INSTALL_SUCCESS" = "false" ]; then
+            echo -e "${RED}Repository installation failed. Cleaning up and attempting generic installation...${PLAIN}"
+            rm -f /etc/apt/sources.list.d/docker.list
+            apt-get update
+            if ! command -v curl >/dev/null 2>&1; then
+                apt-get install -y curl
+            fi
+            curl -fsSL https://get.docker.com | sh
+        fi
         ;;
     centos|rhel|fedora|rocky|almalinux)
         echo -e "${YELLOW}Installing Docker for $OS...${PLAIN}"
         yum remove -y docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine >/dev/null 2>&1
         yum install -y yum-utils
-        echo -e "${YELLOW}Adding Docker repository and disabling GPG check...${PLAIN}"
-        if [[ "$OS" == "fedora" ]]; then
-            yum-config-manager --add-repo https://repo.abrha.net/fedora/docker-ce.repo
-        else
-            yum-config-manager --add-repo https://repo.abrha.net/centos/docker-ce.repo
+
+        INSTALL_SUCCESS=false
+
+        # 1. Official
+        echo -e "${YELLOW}Adding official Docker repository...${PLAIN}"
+        REPO_URL="https://download.docker.com/linux/centos/docker-ce.repo"
+        [ "$OS" = "fedora" ] && REPO_URL="https://download.docker.com/linux/fedora/docker-ce.repo"
+
+        if yum-config-manager --add-repo "$REPO_URL"; then
+            if yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                INSTALL_SUCCESS=true
+            fi
         fi
-        find /etc/yum.repos.d/ -name "*docker-ce.repo" -exec sed -i 's/gpgcheck=1/gpgcheck=0/g' {} +
-        yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-        systemctl enable --now docker
+
+        # 2. Movti
+        if [ "$INSTALL_SUCCESS" = "false" ]; then
+            echo -e "${YELLOW}Official repo failed. Trying Movti mirror...${PLAIN}"
+            MIRROR_REPO="http://movti.runflare.run/centos/docker-ce.repo"
+            [ "$OS" = "fedora" ] && MIRROR_REPO="http://movti.runflare.run/fedora/docker-ce.repo"
+
+            if yum-config-manager --add-repo "$MIRROR_REPO"; then
+                find /etc/yum.repos.d/ -name "*docker-ce.repo" -exec sed -i 's/gpgcheck=1/gpgcheck=0/g' {} +
+                if yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                    INSTALL_SUCCESS=true
+                fi
+            fi
+        fi
+
+        # 3. Aliyun
+        if [ "$INSTALL_SUCCESS" = "false" ]; then
+            echo -e "${YELLOW}Trying Aliyun mirror...${PLAIN}"
+            ALIYUN_REPO="https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo"
+            [ "$OS" = "fedora" ] && ALIYUN_REPO="https://mirrors.aliyun.com/docker-ce/linux/fedora/docker-ce.repo"
+            if yum-config-manager --add-repo "$ALIYUN_REPO"; then
+                if yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                    INSTALL_SUCCESS=true
+                fi
+            fi
+        fi
+
+        # 4. Tencent
+        if [ "$INSTALL_SUCCESS" = "false" ]; then
+            echo -e "${YELLOW}Trying Tencent mirror...${PLAIN}"
+            TENCENT_REPO="https://mirrors.tencent.com/docker-ce/linux/centos/docker-ce.repo"
+            [ "$OS" = "fedora" ] && TENCENT_REPO="https://mirrors.tencent.com/docker-ce/linux/fedora/docker-ce.repo"
+            if yum-config-manager --add-repo "$TENCENT_REPO"; then
+                if yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                    INSTALL_SUCCESS=true
+                fi
+            fi
+        fi
+
+        if [ "$INSTALL_SUCCESS" = "false" ]; then
+            echo -e "${RED}Repository installation failed. Cleaning up and attempting generic installation...${PLAIN}"
+            rm -f /etc/yum.repos.d/*docker-ce.repo
+            if ! command -v curl >/dev/null 2>&1; then
+                yum install -y curl
+            fi
+            curl -fsSL https://get.docker.com | sh
+        fi
+        unmask_docker
+        systemctl enable --now docker || true
         ;;
     arch)
         echo -e "${YELLOW}Installing Docker for Arch Linux...${PLAIN}"
         pacman -Syu --noconfirm docker docker-compose
-        systemctl enable --now docker
+        unmask_docker
+        systemctl enable --now docker || true
         ;;
     *)
         echo -e "${RED}Unsupported OS: $OS. Attempting generic installation...${PLAIN}"
+        if ! command -v curl >/dev/null 2>&1; then
+            echo -e "${YELLOW}Attempting to install curl...${PLAIN}"
+            # Common package managers
+            apt-get install -y curl >/dev/null 2>&1 || yum install -y curl >/dev/null 2>&1 || pacman -S --noconfirm curl >/dev/null 2>&1 || true
+        fi
         curl -fsSL https://get.docker.com | sh
         ;;
 esac
