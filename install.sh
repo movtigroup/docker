@@ -2,7 +2,7 @@
 
 # Docker Installation Script by Movti Group
 # Improved with multi-distro support, fallback repository logic, and better cleanup.
-# Inspired by SuperManito/LinuxMirrors for reliability.
+# Optimized for Iranian users.
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -10,13 +10,13 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 PLAIN='\033[0m'
 
-# Check if root
-if [ "$EUID" -ne 0 ]; then
-    echo -e "${RED}Please run as root${PLAIN}"
+# بررسی دسترسی روت (Root Access Check)
+if [ "$(id -u)" -ne 0 ]; then
+    echo -e "${RED}لطفاً این اسکریپت را با دسترسی root اجرا کنید (sudo).${PLAIN}"
     exit 1
 fi
 
-# Detect OS
+# شناسایی سیستم‌عامل (OS Detection)
 if [ -f /etc/os-release ]; then
     . /etc/os-release
     OS=$ID
@@ -24,24 +24,24 @@ if [ -f /etc/os-release ]; then
         VERSION_CODENAME=$(echo "$VERSION_ID" | cut -d. -f1)
     fi
 else
-    echo -e "${RED}Unsupported system: /etc/os-release not found.${PLAIN}"
+    echo -e "${RED}سیستم‌عامل پشتیبانی نمی‌شود: فایل /etc/os-release یافت نشد.${PLAIN}"
     exit 1
 fi
 
-echo -e "${BLUE}Detected OS: $OS ($VERSION_CODENAME)${PLAIN}"
+echo -e "${BLUE}سیستم‌عامل شناسایی شده: $OS ($VERSION_CODENAME)${PLAIN}"
 
 PRIMARY_MIRROR="https://docker.ththt.ir"
 
 unmask_docker() {
     if command -v systemctl >/dev/null 2>&1; then
-        echo -e "${YELLOW}Unmasking Docker service...${PLAIN}"
+        echo -e "${YELLOW}در حال لغو محدودیت (Unmask) سرویس داکر...${PLAIN}"
         systemctl unmask docker.service >/dev/null 2>&1 || true
         systemctl unmask docker.socket >/dev/null 2>&1 || true
     fi
 }
 
 config_registry_mirror() {
-    echo -e "${YELLOW}Configuring Docker registry mirrors...${PLAIN}"
+    echo -e "${YELLOW}در حال تنظیم آینه‌های ریجستری داکر (Registry Mirrors)...${PLAIN}"
     mkdir -p /etc/docker
     cat > /etc/docker/daemon.json <<JSON
 {
@@ -71,47 +71,50 @@ JSON
 
 case "$OS" in
     ubuntu|debian|raspbian|linuxmint)
-        echo -e "${YELLOW}Installing Docker for $OS...${PLAIN}"
+        echo -e "${YELLOW}در حال نصب پیش‌نیازها برای $OS...${PLAIN}"
         apt-get update
         apt-get install -y ca-certificates curl gnupg lsb-release
-        echo -e "${YELLOW}Removing old versions if any...${PLAIN}"
+
+        echo -e "${YELLOW}پاکسازی نسخه‌های قدیمی و تداخل‌ها...${PLAIN}"
         for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
             apt-get remove -y "$pkg" >/dev/null 2>&1
         done
+        # حذف فایل‌های مخزن قدیمی برای جلوگیری از تداخل
+        rm -f /etc/apt/sources.list.d/docker.list /etc/apt/sources.list.d/archive_uri*.list
 
         INSTALL_SUCCESS=false
 
-        # 1. Official Docker Repository
-        echo -e "${YELLOW}Trying official Docker repository...${PLAIN}"
-        REPO_BASE="https://download.docker.com/linux/ubuntu"
-        [ "$OS" = "debian" ] && REPO_BASE="https://download.docker.com/linux/debian"
-        [ "$OS" = "raspbian" ] && REPO_BASE="https://download.docker.com/linux/raspbian"
+        # 1. Movti Mirror (Priority for Iran)
+        echo -e "${YELLOW}تلاش برای نصب از طریق آینه‌ی Movti (اولویت ایران)...${PLAIN}"
+        REPO_URL="http://movti.runflare.run/ubuntu"
+        [ "$OS" = "debian" ] && REPO_URL="http://movti.runflare.run/debian"
+        [ "$OS" = "raspbian" ] && REPO_URL="http://movti.runflare.run/raspbian"
 
-        mkdir -p /etc/apt/keyrings
-        if curl -fsSL "$REPO_BASE/gpg" -o /etc/apt/keyrings/docker.asc; then
-            chmod a+r /etc/apt/keyrings/docker.asc
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] $REPO_BASE $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-            if apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
-                INSTALL_SUCCESS=true
-            fi
+        echo "deb [arch=$(dpkg --print-architecture) trusted=yes] $REPO_URL $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+        if apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+            INSTALL_SUCCESS=true
         fi
 
-        # 2. Movti Mirror
+        # 2. Official Docker Repository (Fallback)
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${YELLOW}Official repo failed. Trying Movti mirror...${PLAIN}"
-            REPO_URL="http://movti.runflare.run/ubuntu"
-            [ "$OS" = "debian" ] && REPO_URL="http://movti.runflare.run/debian"
-            [ "$OS" = "raspbian" ] && REPO_URL="http://movti.runflare.run/raspbian"
+            echo -e "${YELLOW}آینه‌ی Movti ناموفق بود. تلاش برای مخزن رسمی داکر...${PLAIN}"
+            REPO_BASE="https://download.docker.com/linux/ubuntu"
+            [ "$OS" = "debian" ] && REPO_BASE="https://download.docker.com/linux/debian"
+            [ "$OS" = "raspbian" ] && REPO_BASE="https://download.docker.com/linux/raspbian"
 
-            echo "deb [arch=$(dpkg --print-architecture) trusted=yes] $REPO_URL $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-            if apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
-                INSTALL_SUCCESS=true
+            mkdir -p /etc/apt/keyrings
+            if curl -fsSL "$REPO_BASE/gpg" -o /etc/apt/keyrings/docker.asc; then
+                chmod a+r /etc/apt/keyrings/docker.asc
+                echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] $REPO_BASE $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+                if apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                    INSTALL_SUCCESS=true
+                fi
             fi
         fi
 
         # 3. Aliyun Mirror (China Fallback)
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${YELLOW}Trying Aliyun mirror...${PLAIN}"
+            echo -e "${YELLOW}تلاش برای استفاده از آینه‌ی Aliyun...${PLAIN}"
             ALIYUN_BASE="https://mirrors.aliyun.com/docker-ce/linux/ubuntu"
             [ "$OS" = "debian" ] && ALIYUN_BASE="https://mirrors.aliyun.com/docker-ce/linux/debian"
 
@@ -123,80 +126,39 @@ case "$OS" in
             fi
         fi
 
-        # 4. Tencent Mirror (China Fallback)
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${YELLOW}Trying Tencent mirror...${PLAIN}"
-            TENCENT_BASE="https://mirrors.tencent.com/docker-ce/linux/ubuntu"
-            [ "$OS" = "debian" ] && TENCENT_BASE="https://mirrors.tencent.com/docker-ce/linux/debian"
-
-            if curl -fsSL "$TENCENT_BASE/gpg" | gpg --dearmor -o /etc/apt/keyrings/docker-tencent.gpg --yes; then
-                echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker-tencent.gpg] $TENCENT_BASE $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-                if apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
-                    INSTALL_SUCCESS=true
-                fi
-            fi
-        fi
-
-        if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${RED}Repository installation failed. Cleaning up and attempting generic installation...${PLAIN}"
+            echo -e "${RED}نصب از مخازن با خطا مواجه شد. در حال تلاش برای نصب از طریق اسکریپت رسمی...${PLAIN}"
             rm -f /etc/apt/sources.list.d/docker.list
             apt-get update
-            if ! command -v curl >/dev/null 2>&1; then
-                apt-get install -y curl
-            fi
             curl -fsSL https://get.docker.com | sh
         fi
         ;;
     centos|rhel|fedora|rocky|almalinux)
-        echo -e "${YELLOW}Installing Docker for $OS...${PLAIN}"
+        echo -e "${YELLOW}در حال آماده‌سازی برای $OS...${PLAIN}"
         yum remove -y docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine >/dev/null 2>&1
         yum install -y yum-utils
+        rm -f /etc/yum.repos.d/*docker-ce.repo
 
         INSTALL_SUCCESS=false
 
-        # 1. Official
-        echo -e "${YELLOW}Adding official Docker repository...${PLAIN}"
-        REPO_URL="https://download.docker.com/linux/centos/docker-ce.repo"
-        [ "$OS" = "fedora" ] && REPO_URL="https://download.docker.com/linux/fedora/docker-ce.repo"
+        # 1. Movti (Priority)
+        echo -e "${YELLOW}تلاش برای مخزن Movti...${PLAIN}"
+        MIRROR_REPO="http://movti.runflare.run/centos/docker-ce.repo"
+        [ "$OS" = "fedora" ] && MIRROR_REPO="http://movti.runflare.run/fedora/docker-ce.repo"
 
-        if yum-config-manager --add-repo "$REPO_URL"; then
+        if yum-config-manager --add-repo "$MIRROR_REPO"; then
+            find /etc/yum.repos.d/ -name "*docker-ce.repo" -exec sed -i 's/gpgcheck=1/gpgcheck=0/g' {} +
             if yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
                 INSTALL_SUCCESS=true
             fi
         fi
 
-        # 2. Movti
+        # 2. Official
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${YELLOW}Official repo failed. Trying Movti mirror...${PLAIN}"
-            MIRROR_REPO="http://movti.runflare.run/centos/docker-ce.repo"
-            [ "$OS" = "fedora" ] && MIRROR_REPO="http://movti.runflare.run/fedora/docker-ce.repo"
-
-            if yum-config-manager --add-repo "$MIRROR_REPO"; then
-                find /etc/yum.repos.d/ -name "*docker-ce.repo" -exec sed -i 's/gpgcheck=1/gpgcheck=0/g' {} +
-                if yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
-                    INSTALL_SUCCESS=true
-                fi
-            fi
-        fi
-
-        # 3. Aliyun
-        if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${YELLOW}Trying Aliyun mirror...${PLAIN}"
-            ALIYUN_REPO="https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo"
-            [ "$OS" = "fedora" ] && ALIYUN_REPO="https://mirrors.aliyun.com/docker-ce/linux/fedora/docker-ce.repo"
-            if yum-config-manager --add-repo "$ALIYUN_REPO"; then
-                if yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
-                    INSTALL_SUCCESS=true
-                fi
-            fi
-        fi
-
-        # 4. Tencent
-        if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${YELLOW}Trying Tencent mirror...${PLAIN}"
-            TENCENT_REPO="https://mirrors.tencent.com/docker-ce/linux/centos/docker-ce.repo"
-            [ "$OS" = "fedora" ] && TENCENT_REPO="https://mirrors.tencent.com/docker-ce/linux/fedora/docker-ce.repo"
-            if yum-config-manager --add-repo "$TENCENT_REPO"; then
+            echo -e "${YELLOW}تلاش برای مخزن رسمی...${PLAIN}"
+            REPO_URL="https://download.docker.com/linux/centos/docker-ce.repo"
+            [ "$OS" = "fedora" ] && REPO_URL="https://download.docker.com/linux/fedora/docker-ce.repo"
+            if yum-config-manager --add-repo "$REPO_URL"; then
                 if yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
                     INSTALL_SUCCESS=true
                 fi
@@ -204,34 +166,43 @@ case "$OS" in
         fi
 
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${RED}Repository installation failed. Cleaning up and attempting generic installation...${PLAIN}"
-            rm -f /etc/yum.repos.d/*docker-ce.repo
-            if ! command -v curl >/dev/null 2>&1; then
-                yum install -y curl
-            fi
+            echo -e "${RED}نصب ناموفق بود. در حال تلاش برای روش عمومی...${PLAIN}"
             curl -fsSL https://get.docker.com | sh
         fi
         unmask_docker
         systemctl enable --now docker || true
         ;;
-    arch)
-        echo -e "${YELLOW}Installing Docker for Arch Linux...${PLAIN}"
-        pacman -Syu --noconfirm docker docker-compose
-        unmask_docker
-        systemctl enable --now docker || true
-        ;;
     *)
-        echo -e "${RED}Unsupported OS: $OS. Attempting generic installation...${PLAIN}"
-        if ! command -v curl >/dev/null 2>&1; then
-            echo -e "${YELLOW}Attempting to install curl...${PLAIN}"
-            # Common package managers
-            apt-get install -y curl >/dev/null 2>&1 || yum install -y curl >/dev/null 2>&1 || pacman -S --noconfirm curl >/dev/null 2>&1 || true
-        fi
+        echo -e "${RED}سیستم‌عامل $OS به طور کامل پشتیبانی نمی‌شود. تلاش برای نصب عمومی...${PLAIN}"
         curl -fsSL https://get.docker.com | sh
         ;;
 esac
 
 config_registry_mirror
 
-echo -e "${GREEN}Docker installation and configuration completed!${PLAIN}"
-echo -e "${BLUE}Primary Mirror: $PRIMARY_MIRROR${PLAIN}"
+echo -e "${GREEN}نصب و تنظیمات داکر با موفقیت انجام شد!${PLAIN}"
+echo -e "${BLUE}آینه‌ی اصلی: $PRIMARY_MIRROR${PLAIN}"
+
+# بررسی وضعیت نهایی (Final Status Check)
+if command -v docker >/dev/null 2>&1; then
+    echo -e "${GREEN}نسخه داکر نصب شده:${PLAIN}"
+    docker --version
+    if systemctl is-active --quiet docker; then
+        echo -e "${GREEN}سرویس داکر در حال اجرا است.${PLAIN}"
+    else
+        echo -e "${RED}سرویس داکر متوقف است. در حال تلاش برای شروع...${PLAIN}"
+        systemctl start docker || true
+    fi
+else
+    echo -e "${RED}خطا: داکر به درستی نصب نشده است.${PLAIN}"
+fi
+
+# راهنمای سریع داکر (Quick Guide)
+echo -e "${BLUE}--- راهنمای سریع داکر ---${PLAIN}"
+echo -e "برای اجرای یک کانتینر تست:"
+echo -e "  ${YELLOW}docker run hello-world${PLAIN}"
+echo -e "برای مشاهده کانتینرهای در حال اجرا:"
+echo -e "  ${YELLOW}docker ps${PLAIN}"
+echo -e "برای مشاهده تمام ایمیج‌ها:"
+echo -e "  ${YELLOW}docker images${PLAIN}"
+echo -e "------------------------"

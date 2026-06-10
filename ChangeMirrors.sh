@@ -786,7 +786,7 @@ function command_exists() {
 }
 
 function permission_judgment() {
-    if [ $UID -ne 0 ]; then
+    if [ "$(id -u)" -ne 0 ]; then
         local change_cmd="su root"
         if command_exists sudo; then
             change_cmd="sudo -i"
