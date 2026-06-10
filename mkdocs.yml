@@ -1,0 +1,52 @@
+site_name: میرورهای لینوکس (Movti Group)
+repo_name: LinuxMirrors
+repo_url: https://github.com/movtigroup/docker
+edit_uri: edit/main/docs/
+copyright: 'Copyright &copy; 2024 <a href="https://github.com/movtigroup" target="_blank" rel="noopener noreferrer">Movti Group</a>'
+
+nav:
+  - "معرفی": index.md
+  - "روش استفاده": use/index.md
+  - "لیست میرورها": mirrors/index.md
+  - "ابزارهای کانتینر": other/index.md
+  - "جامعه": community/index.md
+
+theme:
+  name: material
+  language: fa
+  direction: rtl
+  palette:
+    - media: "(prefers-color-scheme)"
+      scheme: system
+      toggle:
+        icon: material/brightness-auto
+        name: خودکار
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: روز
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: شب
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
