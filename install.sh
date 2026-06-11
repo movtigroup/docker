@@ -52,8 +52,6 @@ safe_apt_install() {
         if apt-get install -y "$@"; then
             return 0
         fi
-        # If failure is "Unable to locate package", retrying won't help unless we fix sources
-        # So we only retry if it's potentially a lock or network issue
         warn "APT install failed, retrying in 10 seconds ($((count+1))/5)..."
         sleep 10
         count=$((count + 1))
@@ -61,7 +59,72 @@ safe_apt_install() {
     return 1
 }
 
-# Check root access
+# Help menu
+show_help() {
+    echo "Usage: $0 [options]"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help      Show this help message"
+    echo "  -r, --remove    Completely remove Docker and old components"
+    echo ""
+    echo "Description:"
+    echo "This script installs Docker prioritizing Iranian mirrors (Abrha and Movti)."
+}
+
+# Remove Docker function
+remove_docker() {
+    if [ "$(id -u)" -ne 0 ]; then
+        error "Please run as root (sudo) to remove packages."
+        exit 1
+    fi
+    info "Removing Docker and related packages..."
+    # Detect OS if not already detected
+    if [ -z "$OS" ]; then
+        if [ -f /etc/os-release ]; then
+            . /etc/os-release
+            OS=$ID
+        fi
+    fi
+    case "$OS" in
+        ubuntu|debian|raspbian|linuxmint)
+            local pkgs=$(dpkg --get-selections docker.io docker-compose docker-compose-v2 docker-doc podman-docker containerd runc 2>/dev/null | cut -f1)
+            if [ -n "$pkgs" ]; then
+                apt-get remove -y $pkgs
+                apt-get autoremove -y
+            else
+                info "No old Docker packages found to remove."
+            fi
+            ;;
+        centos|rhel|fedora|rocky|almalinux)
+            yum remove -y docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine
+            ;;
+        *)
+            error "Automatic removal not supported for $OS."
+            ;;
+    esac
+    success "Removal process completed."
+}
+
+# Argument parsing
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -r|--remove)
+            remove_docker
+            exit 0
+            ;;
+        *)
+            error "Unknown option: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+done
+
+# Check root access for installation
 if [ "$(id -u)" -ne 0 ]; then
     error "Please run as root (sudo)."
     exit 1
@@ -123,13 +186,11 @@ JSON
 case "$OS" in
     ubuntu|debian|raspbian|linuxmint)
         info "Cleaning up conflicting APT sources..."
-        # 1. Surgical removal from main sources.list
-        [ -f /etc/apt/sources.list ] && sed -i '/runflare.run\|docker.com\|aliyun.com\/docker-ce\|tencent.com\/docker-ce/d' /etc/apt/sources.list
+        [ -f /etc/apt/sources.list ] && sed -i '/abrha.net\|runflare.run\|docker.com\|aliyun.com\/docker-ce\|tencent.com\/docker-ce/d' /etc/apt/sources.list
 
-        # 2. Complete removal of suspicious files in sources.list.d
         for f in /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
             if [ -f "$f" ]; then
-                if grep -qi "runflare.run\|docker.com\|aliyun.com\|tencent.com" "$f"; then
+                if grep -qi "abrha.net\|runflare.run\|docker.com\|aliyun.com\|tencent.com" "$f"; then
                     warn "Removing conflicting source file: $f"
                     rm -f "$f"
                 fi
@@ -140,36 +201,52 @@ case "$OS" in
         safe_apt_update
         safe_apt_install ca-certificates curl gnupg lsb-release
 
-        warn "Removing old Docker versions if any..."
-        for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
-            apt-get remove -y "$pkg" >/dev/null 2>&1
-        done
-
         INSTALL_SUCCESS=false
 
-        # 1. Movti Mirror (Priority for Iran)
-        info "Trying Movti mirror (Iran priority)..."
-        REPO_URL="http://movti.runflare.run/ubuntu"
-        [ "$OS" = "debian" ] && REPO_URL="http://movti.runflare.run/debian"
-        [ "$OS" = "raspbian" ] && REPO_URL="http://movti.runflare.run/raspbian"
+        # 1. Abrha Mirror (Primary Priority for Ubuntu)
+        if [ "$OS" = "ubuntu" ]; then
+            info "Trying Abrha mirror (Primary Priority for Ubuntu)..."
+            install -m 0755 -d /etc/apt/keyrings
+            if curl -fsSL https://repo.abrha.net/docker/ubuntu/gpg -o /etc/apt/keyrings/docker.asc; then
+                chmod a+r /etc/apt/keyrings/docker.asc
+                printf '%s\n' \
+                "Types: deb" \
+                "URIs: https://repo.abrha.net/docker/ubuntu" \
+                "Suites: ${UBUNTU_CODENAME:-$VERSION_CODENAME}" \
+                "Components: stable" \
+                "Architectures: $(dpkg --print-architecture)" \
+                "Signed-By: /etc/apt/keyrings/docker.asc" | tee /etc/apt/sources.list.d/docker.sources > /dev/null
 
-        # Explicitly ensure we only have our new source
-        rm -f /etc/apt/sources.list.d/docker.list
-        echo "deb [arch=$(dpkg --print-architecture) trusted=yes] $REPO_URL $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-        if safe_apt_update && safe_apt_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
-            INSTALL_SUCCESS=true
+                if safe_apt_update && safe_apt_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                    INSTALL_SUCCESS=true
+                fi
+            fi
         fi
 
-        # 2. Official Docker Repository (Fallback)
+        # 2. Movti Mirror (Fallback or Default for others)
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            warn "Movti mirror failed. Trying official Docker repository..."
+            info "Trying Movti mirror..."
+            REPO_URL="http://movti.runflare.run/ubuntu"
+            [ "$OS" = "debian" ] && REPO_URL="http://movti.runflare.run/debian"
+            [ "$OS" = "raspbian" ] && REPO_URL="http://movti.runflare.run/raspbian"
+
+            rm -f /etc/apt/sources.list.d/docker.list
+            echo "deb [arch=$(dpkg --print-architecture) trusted=yes] $REPO_URL $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+            if safe_apt_update && safe_apt_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+                INSTALL_SUCCESS=true
+            fi
+        fi
+
+        # 3. Official Docker Repository (Fallback)
+        if [ "$INSTALL_SUCCESS" = "false" ]; then
+            warn "Mirrors failed. Trying official Docker repository..."
             rm -f /etc/apt/sources.list.d/docker.list
             REPO_BASE="https://download.docker.com/linux/ubuntu"
             [ "$OS" = "debian" ] && REPO_BASE="https://download.docker.com/linux/debian"
             [ "$OS" = "raspbian" ] && REPO_BASE="https://download.docker.com/linux/raspbian"
 
-            mkdir -p /etc/apt/keyrings
+            install -m 0755 -d /etc/apt/keyrings
             if curl -fsSL "$REPO_BASE/gpg" -o /etc/apt/keyrings/docker.asc; then
                 chmod a+r /etc/apt/keyrings/docker.asc
                 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] $REPO_BASE $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
@@ -179,7 +256,7 @@ case "$OS" in
             fi
         fi
 
-        # 3. Aliyun Mirror (Fallback)
+        # 4. Aliyun Mirror (Fallback)
         if [ "$INSTALL_SUCCESS" = "false" ]; then
             warn "Trying Aliyun mirror..."
             rm -f /etc/apt/sources.list.d/docker.list
