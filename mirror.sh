@@ -1,8 +1,6 @@
 #!/bin/bash
 
 # Docker Mirror Configuration Script by Movti Group
-# Updated with broader registry mirror support for international and Chinese nodes.
-# Optimized for Iranian users.
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -10,8 +8,14 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 PLAIN='\033[0m'
 
+# Portable color echoing
+info() { printf "${BLUE}%b${PLAIN}\n" "$*"; }
+success() { printf "${GREEN}%b${PLAIN}\n" "$*"; }
+warn() { printf "${YELLOW}%b${PLAIN}\n" "$*"; }
+error() { printf "${RED}%b${PLAIN}\n" "$*"; }
+
 if [ "$(id -u)" -ne 0 ]; then
-    echo -e "${RED}لطفاً این اسکریپت را با دسترسی root اجرا کنید (sudo).${PLAIN}"
+    error "Please run as root (sudo)."
     exit 1
 fi
 
@@ -19,13 +23,13 @@ PRIMARY_MIRROR="https://docker.ththt.ir"
 
 unmask_docker() {
     if command -v systemctl >/dev/null 2>&1; then
-        echo -e "${YELLOW}در حال لغو محدودیت (Unmask) سرویس داکر...${PLAIN}"
+        warn "Unmasking Docker service..."
         systemctl unmask docker.service >/dev/null 2>&1 || true
         systemctl unmask docker.socket >/dev/null 2>&1 || true
     fi
 }
 
-echo -e "${YELLOW}در حال تنظیم آینه‌های ریجستری داکر (Registry Mirrors)...${PLAIN}"
+info "Configuring Docker registry mirrors..."
 mkdir -p /etc/docker
 cat > /etc/docker/daemon.json <<JSON
 {
@@ -54,5 +58,5 @@ else
     service docker restart || true
 fi
 
-echo -e "${GREEN}آینه‌های ریجستری داکر با موفقیت بروزرسانی شدند!${PLAIN}"
-echo -e "${BLUE}آینه‌ی اصلی: $PRIMARY_MIRROR${PLAIN}"
+success "Docker registry mirrors have been updated!"
+info "Primary Mirror: $PRIMARY_MIRROR"

@@ -2,7 +2,6 @@
 
 # Docker Installation Script by Movti Group
 # Improved with multi-distro support, fallback repository logic, and better cleanup.
-# Optimized for Iranian users.
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -10,13 +9,19 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 PLAIN='\033[0m'
 
-# بررسی دسترسی روت (Root Access Check)
+# Portable color echoing
+info() { printf "${BLUE}%b${PLAIN}\n" "$*"; }
+success() { printf "${GREEN}%b${PLAIN}\n" "$*"; }
+warn() { printf "${YELLOW}%b${PLAIN}\n" "$*"; }
+error() { printf "${RED}%b${PLAIN}\n" "$*"; }
+
+# Check root access
 if [ "$(id -u)" -ne 0 ]; then
-    echo -e "${RED}لطفاً این اسکریپت را با دسترسی root اجرا کنید (sudo).${PLAIN}"
+    error "Please run as root (sudo)."
     exit 1
 fi
 
-# شناسایی سیستم‌عامل (OS Detection)
+# Detect OS
 if [ -f /etc/os-release ]; then
     . /etc/os-release
     OS=$ID
@@ -24,24 +29,24 @@ if [ -f /etc/os-release ]; then
         VERSION_CODENAME=$(echo "$VERSION_ID" | cut -d. -f1)
     fi
 else
-    echo -e "${RED}سیستم‌عامل پشتیبانی نمی‌شود: فایل /etc/os-release یافت نشد.${PLAIN}"
+    error "Unsupported system: /etc/os-release not found."
     exit 1
 fi
 
-echo -e "${BLUE}سیستم‌عامل شناسایی شده: $OS ($VERSION_CODENAME)${PLAIN}"
+info "Detected OS: $OS ($VERSION_CODENAME)"
 
 PRIMARY_MIRROR="https://docker.ththt.ir"
 
 unmask_docker() {
     if command -v systemctl >/dev/null 2>&1; then
-        echo -e "${YELLOW}در حال لغو محدودیت (Unmask) سرویس داکر...${PLAIN}"
+        warn "Unmasking Docker service..."
         systemctl unmask docker.service >/dev/null 2>&1 || true
         systemctl unmask docker.socket >/dev/null 2>&1 || true
     fi
 }
 
 config_registry_mirror() {
-    echo -e "${YELLOW}در حال تنظیم آینه‌های ریجستری داکر (Registry Mirrors)...${PLAIN}"
+    info "Configuring Docker registry mirrors..."
     mkdir -p /etc/docker
     cat > /etc/docker/daemon.json <<JSON
 {
@@ -71,21 +76,24 @@ JSON
 
 case "$OS" in
     ubuntu|debian|raspbian|linuxmint)
-        echo -e "${YELLOW}در حال نصب پیش‌نیازها برای $OS...${PLAIN}"
+        info "Installing prerequisites for $OS..."
         apt-get update
         apt-get install -y ca-certificates curl gnupg lsb-release
 
-        echo -e "${YELLOW}پاکسازی نسخه‌های قدیمی و تداخل‌ها...${PLAIN}"
+        warn "Removing old versions and conflicting sources..."
         for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
             apt-get remove -y "$pkg" >/dev/null 2>&1
         done
-        # حذف فایل‌های مخزن قدیمی برای جلوگیری از تداخل
+
+        # Aggressive cleanup of conflicting sources to avoid "Conflicting values set for option Trusted"
+        # Remove lines containing our mirror or download.docker.com from all source files
+        grep -lR "runflare.run\|docker.com" /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null | xargs sed -i '/runflare.run\|docker.com/d' 2>/dev/null || true
         rm -f /etc/apt/sources.list.d/docker.list /etc/apt/sources.list.d/archive_uri*.list
 
         INSTALL_SUCCESS=false
 
         # 1. Movti Mirror (Priority for Iran)
-        echo -e "${YELLOW}تلاش برای نصب از طریق آینه‌ی Movti (اولویت ایران)...${PLAIN}"
+        info "Trying Movti mirror (Iran priority)..."
         REPO_URL="http://movti.runflare.run/ubuntu"
         [ "$OS" = "debian" ] && REPO_URL="http://movti.runflare.run/debian"
         [ "$OS" = "raspbian" ] && REPO_URL="http://movti.runflare.run/raspbian"
@@ -97,7 +105,7 @@ case "$OS" in
 
         # 2. Official Docker Repository (Fallback)
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${YELLOW}آینه‌ی Movti ناموفق بود. تلاش برای مخزن رسمی داکر...${PLAIN}"
+            warn "Movti mirror failed. Trying official Docker repository..."
             REPO_BASE="https://download.docker.com/linux/ubuntu"
             [ "$OS" = "debian" ] && REPO_BASE="https://download.docker.com/linux/debian"
             [ "$OS" = "raspbian" ] && REPO_BASE="https://download.docker.com/linux/raspbian"
@@ -114,7 +122,7 @@ case "$OS" in
 
         # 3. Aliyun Mirror (China Fallback)
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${YELLOW}تلاش برای استفاده از آینه‌ی Aliyun...${PLAIN}"
+            warn "Trying Aliyun mirror..."
             ALIYUN_BASE="https://mirrors.aliyun.com/docker-ce/linux/ubuntu"
             [ "$OS" = "debian" ] && ALIYUN_BASE="https://mirrors.aliyun.com/docker-ce/linux/debian"
 
@@ -127,14 +135,14 @@ case "$OS" in
         fi
 
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${RED}نصب از مخازن با خطا مواجه شد. در حال تلاش برای نصب از طریق اسکریپت رسمی...${PLAIN}"
+            error "Installation from repositories failed. Trying official install script..."
             rm -f /etc/apt/sources.list.d/docker.list
             apt-get update
             curl -fsSL https://get.docker.com | sh
         fi
         ;;
     centos|rhel|fedora|rocky|almalinux)
-        echo -e "${YELLOW}در حال آماده‌سازی برای $OS...${PLAIN}"
+        info "Preparing for $OS..."
         yum remove -y docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine >/dev/null 2>&1
         yum install -y yum-utils
         rm -f /etc/yum.repos.d/*docker-ce.repo
@@ -142,7 +150,7 @@ case "$OS" in
         INSTALL_SUCCESS=false
 
         # 1. Movti (Priority)
-        echo -e "${YELLOW}تلاش برای مخزن Movti...${PLAIN}"
+        info "Trying Movti repository..."
         MIRROR_REPO="http://movti.runflare.run/centos/docker-ce.repo"
         [ "$OS" = "fedora" ] && MIRROR_REPO="http://movti.runflare.run/fedora/docker-ce.repo"
 
@@ -155,7 +163,7 @@ case "$OS" in
 
         # 2. Official
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${YELLOW}تلاش برای مخزن رسمی...${PLAIN}"
+            warn "Trying official repository..."
             REPO_URL="https://download.docker.com/linux/centos/docker-ce.repo"
             [ "$OS" = "fedora" ] && REPO_URL="https://download.docker.com/linux/fedora/docker-ce.repo"
             if yum-config-manager --add-repo "$REPO_URL"; then
@@ -166,43 +174,43 @@ case "$OS" in
         fi
 
         if [ "$INSTALL_SUCCESS" = "false" ]; then
-            echo -e "${RED}نصب ناموفق بود. در حال تلاش برای روش عمومی...${PLAIN}"
+            error "Installation failed. Trying generic method..."
             curl -fsSL https://get.docker.com | sh
         fi
         unmask_docker
         systemctl enable --now docker || true
         ;;
     *)
-        echo -e "${RED}سیستم‌عامل $OS به طور کامل پشتیبانی نمی‌شود. تلاش برای نصب عمومی...${PLAIN}"
+        error "OS $OS is not fully supported. Trying generic installation..."
         curl -fsSL https://get.docker.com | sh
         ;;
 esac
 
 config_registry_mirror
 
-echo -e "${GREEN}نصب و تنظیمات داکر با موفقیت انجام شد!${PLAIN}"
-echo -e "${BLUE}آینه‌ی اصلی: $PRIMARY_MIRROR${PLAIN}"
+success "Docker installation and configuration completed!"
+info "Primary Mirror: $PRIMARY_MIRROR"
 
-# بررسی وضعیت نهایی (Final Status Check)
+# Final Status Check
 if command -v docker >/dev/null 2>&1; then
-    echo -e "${GREEN}نسخه داکر نصب شده:${PLAIN}"
+    success "Docker version installed:"
     docker --version
     if systemctl is-active --quiet docker; then
-        echo -e "${GREEN}سرویس داکر در حال اجرا است.${PLAIN}"
+        success "Docker service is running."
     else
-        echo -e "${RED}سرویس داکر متوقف است. در حال تلاش برای شروع...${PLAIN}"
+        warn "Docker service is stopped. Attempting to start..."
         systemctl start docker || true
     fi
 else
-    echo -e "${RED}خطا: داکر به درستی نصب نشده است.${PLAIN}"
+    error "Error: Docker was not installed correctly."
 fi
 
-# راهنمای سریع داکر (Quick Guide)
-echo -e "${BLUE}--- راهنمای سریع داکر ---${PLAIN}"
-echo -e "برای اجرای یک کانتینر تست:"
-echo -e "  ${YELLOW}docker run hello-world${PLAIN}"
-echo -e "برای مشاهده کانتینرهای در حال اجرا:"
-echo -e "  ${YELLOW}docker ps${PLAIN}"
-echo -e "برای مشاهده تمام ایمیج‌ها:"
-echo -e "  ${YELLOW}docker images${PLAIN}"
-echo -e "------------------------"
+# Quick Guide
+info "--- Docker Quick Guide ---"
+info "To run a test container:"
+info "  docker run hello-world"
+info "To view running containers:"
+info "  docker ps"
+info "To view all images:"
+info "  docker images"
+info "------------------------"

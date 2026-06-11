@@ -1,6 +1,6 @@
 # Instructions for Jules
 
 - Use `$(id -u) -ne 0` for root checks.
-- Persian (Farsi) localization is preferred.
+- All script outputs (info, success, warn, error) MUST be in English.
 - Prioritize `movti.runflare.run` mirror.
-- Remove conflicting source files in `/etc/apt/sources.list.d/`.
+- Aggressively remove conflicting source files in `/etc/apt/sources.list.d/` and lines in `/etc/apt/sources.list`.
