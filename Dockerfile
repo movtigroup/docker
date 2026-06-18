@@ -1,7 +1,7 @@
 FROM nginx:alpine
 
-# Copy all shell scripts to the Nginx html directory
-COPY *.sh /usr/share/nginx/html/
+# Copy everything (filtered by .dockerignore) to the Nginx html directory
+COPY . /usr/share/nginx/html/
 
 # Expose port 80
 EXPOSE 80

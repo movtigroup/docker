@@ -42,7 +42,7 @@ If you are using **Docker Desktop** on Windows or macOS:
 {
   "registry-mirrors": [
     "https://docker.ththt.ir",
-    "https://docker.3cn.ir",
+    "https://docker.3cn.ir", (Helper for ththt.ir)
     "https://docker.arvancloud.ir",
     "https://mirror2.chabokan.net",
     "https://docker.abrha.net"
@@ -57,7 +57,7 @@ If you are using **Docker Desktop** on Windows or macOS:
 | Mirror Address | Usage | Priority |
 |----------------|-------|----------|
 | `https://docker.ththt.ir` | Primary Docker Hub mirror (New) | 1️⃣ |
-| `https://docker.3cn.ir` | Helper mirror for ththt.ir | 1️⃣.5️⃣ |
+| `https://docker.3cn.ir` | Helper mirror for ththt.ir | 1️⃣.5️⃣ | (Helper for ththt.ir)
 | `https://docker.arvancloud.ir` | Backup mirror | 2️⃣ |
 | `https://mirror2.chabokan.net` | OS packages & backup mirror | 3️⃣ |
 | `https://docker.abrha.net` | Backup mirror | 4️⃣ |
