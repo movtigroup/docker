@@ -35,6 +35,7 @@ cat > /etc/docker/daemon.json <<JSON
 {
   "registry-mirrors": [
     "$PRIMARY_MIRROR",
+    "https://docker.3cn.ir",
     "https://docker.arvancloud.ir",
     "https://mirror2.chabokan.net",
     "https://docker.abrha.net",
