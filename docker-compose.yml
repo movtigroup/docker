@@ -1,0 +1,7 @@
+services:
+  docker-mirror-server:
+    build: .
+    container_name: docker-mirror-server
+    ports:
+      - "8004:80"
+    restart: always
