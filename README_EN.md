@@ -95,8 +95,6 @@ CMD nginx -g "daemon off;"
 
 ## 🐳 Self-Hosting
 
-If you want to host these scripts on your own private server, you can use Docker:
-
 ### 1. Setup with Docker Compose
 First clone the repository, then run:
 
@@ -104,12 +102,22 @@ First clone the repository, then run:
 docker compose up -d --build
 ```
 
-### 2. Using the Hosted Script
-Once running, the script will be available on port **8004** of your server. To install Docker from your own server:
+### 2. Using the Hosted Scripts
+Once running, all scripts will be available on port **8004** of your server:
 
-```bash
-curl -fsSL http://SERVER_IP:8004/docker.sh | sudo bash
-```
+- **Auto Installation:**
+  ```bash
+  curl -fsSL http://SERVER_IP:8004/docker.sh | sudo bash
+  ```
+  *(or `install.sh`)*
+
+- **Config Mirror:**
+  ```bash
+  curl -fsSL http://SERVER_IP:8004/mirror.sh | sudo bash
+  ```
+
+- **Other Scripts:**
+  `ChangeMirrors.sh`, `DockerInstallation.sh`
 
 *Note: Replace `SERVER_IP` with your server's IP address.*
 

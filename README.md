@@ -95,8 +95,6 @@ CMD nginx -g "daemon off;"
 
 ## 🐳 میزبانی شخصی (Self-Hosting)
 
-اگر می‌خواهید این اسکریپت‌ها را روی سرور شخصی خود میزبانی کنید، می‌توانید از Docker استفاده کنید:
-
 ### ۱. راه‌اندازی با Docker Compose
 ابتدا مخزن را کلون کرده و سپس دستور زیر را اجرا کنید:
 
@@ -104,12 +102,22 @@ CMD nginx -g "daemon off;"
 docker compose up -d --build
 ```
 
-### ۲. استفاده از اسکریپت میزبانی شده
-پس از اجرا، اسکریپت روی پورت **8004** سرور شما در دسترس خواهد بود. برای نصب داکر از سرور خودتان:
+### ۲. استفاده از اسکریپت‌های میزبانی شده
+پس از اجرا، تمامی اسکریپت‌ها روی پورت **8004** سرور شما در دسترس خواهند بود:
 
-```bash
-curl -fsSL http://IP_SERVER:8004/docker.sh | sudo bash
-```
+- **نصب خودکار:**
+  ```bash
+  curl -fsSL http://IP_SERVER:8004/docker.sh | sudo bash
+  ```
+  *(یا `install.sh`)*
+
+- **تنظیم میرور:**
+  ```bash
+  curl -fsSL http://IP_SERVER:8004/mirror.sh | sudo bash
+  ```
+
+- **سایر اسکریپت‌ها:**
+  `ChangeMirrors.sh`, `DockerInstallation.sh`
 
 *نکته: جای `IP_SERVER` آدرس IP سرور خود را قرار دهید.*
 

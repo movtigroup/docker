@@ -95,8 +95,6 @@ CMD nginx -g "daemon off;"
 
 ## 🐳 私有化部署 (Self-Hosting)
 
-如果您希望在自己的私有服务器上托管这些脚本，可以使用 Docker：
-
 ### 1. 使用 Docker Compose 启动
 首先克隆仓库，然后运行：
 
@@ -105,13 +103,23 @@ docker compose up -d --build
 ```
 
 ### 2. 使用托管脚本
-启动后，脚本将在您服务器的 **8004** 端口上可用。要从您自己的服务器安装 Docker：
+启动后，所有脚本将在您服务器的 **8004** 端口上可用：
 
-```bash
-curl -fsSL http://SERVER_IP:8004/docker.sh | sudo bash
-```
+- **自动安装：**
+  ```bash
+  curl -fsSL http://SERVER_IP:8004/docker.sh | sudo bash
+  ```
+  *(或 `install.sh`)*
 
-*注意：请将 `SERVER_IP` 替换为您服务器的 IP 地址。*
+- **配置镜像：**
+  ```bash
+  curl -fsSL http://SERVER_IP:8004/mirror.sh | sudo bash
+  ```
+
+- **其他脚本：**
+  `ChangeMirrors.sh`, `DockerInstallation.sh`
+
+*注意：请将 `SERVER_IP` 替换为您服务器s的 IP 地址。*
 
 ---
 
