@@ -42,7 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/mirror.sh | 
 {
   "registry-mirrors": [
     "https://docker.ththt.ir",
-    "https://docker.3cn.ir",
+    "https://docker.3cn.ir", (ththt.ir 的辅助镜像)
     "https://docker.arvancloud.ir",
     "https://mirror2.chabokan.net",
     "https://docker.abrha.net"
@@ -57,7 +57,7 @@ curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/mirror.sh | 
 | 镜像地址 | 用途 | 优先级 |
 |----------|------|--------|
 | `https://docker.ththt.ir` | 主要 Docker Hub 镜像 (新) | 1️⃣ |
-| `https://docker.3cn.ir` | ththt.ir 的辅助镜像 | 1️⃣.5️⃣ |
+| `https://docker.3cn.ir` | ththt.ir 的辅助镜像 | 1️⃣.5️⃣ | (ththt.ir 的辅助镜像)
 | `https://docker.arvancloud.ir` | 备用镜像 | 2️⃣ |
 | `https://mirror2.chabokan.net` | OS 包和备用镜像 | 3️⃣ |
 | `https://docker.abrha.net` | 备用镜像 | 4️⃣ |

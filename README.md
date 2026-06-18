@@ -42,7 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/mirror.sh | 
 {
   "registry-mirrors": [
     "https://docker.ththt.ir",
-    "https://docker.3cn.ir",
+    "https://docker.3cn.ir", (کمکی برای ththt.ir)
     "https://docker.arvancloud.ir",
     "https://mirror2.chabokan.net",
     "https://docker.abrha.net"
@@ -57,7 +57,7 @@ curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/mirror.sh | 
 | آدرس mirror | کاربرد | اولویت |
 |-------------|--------|--------|
 | `https://docker.ththt.ir` | mirror اصلی Docker Hub (جدید) | 1️⃣ |
-| `https://docker.3cn.ir` | ththt.ir میزبانی کمکی برای | 1️⃣.5️⃣ |
+| `https://docker.3cn.ir` | ththt.ir میزبانی کمکی برای | 1️⃣.5️⃣ | (کمکی برای ththt.ir)
 | `https://docker.arvancloud.ir` | mirror پشتیبان | 2️⃣ |
 | `https://mirror2.chabokan.net` | mirror پشتیبان و پکیج‌های سیستم‌عامل | 3️⃣ |
 | `https://docker.abrha.net` | mirror پشتیبان | 4️⃣ |
