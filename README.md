@@ -1,5 +1,11 @@
 # 🐳 Docker Mirror Repository by Movti Group
 
+[![Status](https://img.shields.io/badge/status-active-success.svg)](https://github.com/movtigroup/docker)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![English](https://img.shields.io/badge/lang-English-red.svg)](README_EN.md)
+[![Persian](https://img.shields.io/badge/lang-Persian-green.svg)](README.md)
+[![Chinese](https://img.shields.io/badge/lang-Chinese-yellow.svg)](README_CN.md)
+
 این مخزن شامل اسکریپت‌ها و تنظیمات مورد نیاز برای نصب و استفاده از Docker **بدون نیاز به VPN** و با بهره‌گیری از **mirrorهای داخلی و به‌روز** مدیریت‌شده توسط **Movti Group** است. تمامی پکیج‌های Docker و imageهای آن از طریق سرورهای کش شده و پایدار قابل دانلود هستند.
 
 ---
@@ -36,6 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/mirror.sh | 
 {
   "registry-mirrors": [
     "https://docker.ththt.ir",
+    "https://docker.3cn.ir", (کمکی برای ththt.ir)
     "https://docker.arvancloud.ir",
     "https://mirror2.chabokan.net",
     "https://docker.abrha.net"
@@ -50,6 +57,7 @@ curl -fsSL https://raw.githubusercontent.com/movtigroup/docker/main/mirror.sh | 
 | آدرس mirror | کاربرد | اولویت |
 |-------------|--------|--------|
 | `https://docker.ththt.ir` | mirror اصلی Docker Hub (جدید) | 1️⃣ |
+| `https://docker.3cn.ir` | ththt.ir میزبانی کمکی برای | 1️⃣.5️⃣ | (کمکی برای ththt.ir)
 | `https://docker.arvancloud.ir` | mirror پشتیبان | 2️⃣ |
 | `https://mirror2.chabokan.net` | mirror پشتیبان و پکیج‌های سیستم‌عامل | 3️⃣ |
 | `https://docker.abrha.net` | mirror پشتیبان | 4️⃣ |
@@ -74,14 +82,44 @@ Movti Group همچنین یک **mirror به‌روز برای Alpine Linux** د�
 FROM alpine
 
 # اضافه کردن mirror Movti Group برای Alpine
-RUN echo https://mirror.arvancloud.ir/alpine/v$(echo $(cat /etc/alpine-release) | awk -F . '{print $1"."$2}')/main > /etc/apk/repositories
-RUN echo https://mirror.arvancloud.ir/alpine/v$(echo $(cat /etc/alpine-release) | awk -F . '{print $1"."$2}')/community >> /etc/apk/repositories
+RUN echo https://mirror.arvancloud.ir/alpine/v\$(echo \$(cat /etc/alpine-release) | awk -F . '{print \$1"."\$2}')/main > /etc/apk/repositories
+RUN echo https://mirror.arvancloud.ir/alpine/v\$(echo \$(cat /etc/alpine-release) | awk -F . '{print \$1"."\$2}')/community >> /etc/apk/repositories
 
 # نصب Nginx (به‌عنوان مثال)
 RUN apk update && apk add nginx
 
 CMD nginx -g "daemon off;"
 ```
+
+---
+
+## 🐳 میزبانی شخصی (Self-Hosting)
+
+### ۱. راه‌اندازی با Docker Compose
+ابتدا مخزن را کلون کرده و سپس دستور زیر را اجرا کنید:
+
+```bash
+docker compose up -d --build
+```
+
+### ۲. استفاده از اسکریپت‌های میزبانی شده
+پس از اجرا، تمامی اسکریپت‌ها روی پورت **8004** سرور شما در دسترس خواهند بود:
+
+- **نصب خودکار:**
+  ```bash
+  curl -fsSL http://IP_SERVER:8004/docker.sh | sudo bash
+  ```
+  *(یا `install.sh`)*
+
+- **تنظیم میرور:**
+  ```bash
+  curl -fsSL http://IP_SERVER:8004/mirror.sh | sudo bash
+  ```
+
+- **سایر اسکریپت‌ها:**
+  `ChangeMirrors.sh`, `DockerInstallation.sh`
+
+*نکته: جای `IP_SERVER` آدرس IP سرور خود را قرار دهید.*
 
 ---
 
